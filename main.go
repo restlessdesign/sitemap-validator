@@ -16,23 +16,33 @@ import (
 )
 
 type SitemapIndex struct {
-	Sitemaps []Sitemap
+	XMLName xml.Name `xml:"sitemapindex"`
+	XMLNS   string   `xml:"xmlns,attr"`
+
+	Sitemaps []Sitemap `xml:"sitemap"`
 }
 
 type Sitemap struct {
+	XMLName xml.Name `xml:"sitemap"`
+
 	Loc     string `xml:"loc"`
-	Lastmod string `xml:"lastmod"`
+	LastMod string `xml:"lastmod,omitempty"`
 }
 
-type UrlSet struct {
-	Urls []SitemapURL
+type SitemapURLSet struct {
+	XMLName xml.Name `xml:"urlset"`
+	XMLNS   string   `xml:"xmlns,attr"`
+
+	URLs []SitemapURL `xml:"url"`
 }
 
 type SitemapURL struct {
+	XMLName xml.Name `xml:"url"`
+
 	Loc        string  `xml:"loc"`
-	Lastmod    string  `xml:"lastmod"`
-	Changefreq string  `xml:"changefreq"`
-	Priority   float64 `xml:"priority"`
+	LastMod    string  `xml:"lastmod,omitempty"`
+	ChangeFreq string  `xml:"changefreq,omitempty"`
+	Priority   float64 `xml:"priority,omitempty"`
 }
 
 func main() {
@@ -66,8 +76,6 @@ func parseSitemapResp(resp *http.Response) {
 		log.Fatal(err)
 	}
 
-	log.Println(string(respBytes))
-
 	// Parse XML from response byte array
 	v := &SitemapIndex{}
 	xmlErr := xml.Unmarshal(respBytes, &v)
@@ -76,7 +84,9 @@ func parseSitemapResp(resp *http.Response) {
 		log.Fatal(xmlErr)
 	}
 
-	log.Print(v)
+	for _, sitemap := range v.Sitemaps {
+		log.Println(sitemap.Loc)
+	}
 }
 
 // Build tree of URLs
