@@ -50,26 +50,27 @@ func main() {
 		log.Fatalln("You must pass a sitemap index URL argument!")
 	}
 
-	// Get sitemap index from arguments
-	sitemapIndexUrl := os.Args[1]
+	loadSitemapIndex(os.Args[1])
+}
 
-	// Make request to sitemap index
-	resp, err := http.Get(sitemapIndexUrl)
+func loadSitemapIndex(url string) {
+	resp, err := http.Get(url)
+
+	log.Printf("Loading sitemap index: %v (%v)\n", url, resp.Status)
+
 	if err != nil || resp.StatusCode > 200 {
-		log.Println("Unable to load sitemap: ", sitemapIndexUrl)
+		log.Printf("Unable to load sitemap index: %v\n", url)
 		log.Fatal(err)
 	}
 
-	parseSitemapResp(resp)
+	parseSitemapIndex(resp)
 }
 
-// Parse sitemap XML response for other sitemaps
-func parseSitemapResp(resp *http.Response) {
+func parseSitemapIndex(resp *http.Response) {
 	// Ensure that read operation cleans up after itself
 	defer resp.Body.Close()
 
 	// Load response into a byte array
-	log.Println("Loading sitemap index…")
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Println("Error reading sitemap index")
@@ -85,8 +86,20 @@ func parseSitemapResp(resp *http.Response) {
 	}
 
 	for _, sitemap := range v.Sitemaps {
-		log.Println(sitemap.Loc)
+		loadSitemap(sitemap.Loc)
 	}
+}
+
+func loadSitemap(url string) {
+	resp, err := http.Get(url)
+
+	log.Printf("Loading sitemap: %v (%v)\n", url, resp.Status)
+
+	if err != nil || resp.StatusCode > 200 {
+		log.Fatal(err)
+	}
+
+	// parseSitemap(resp)
 }
 
 // Build tree of URLs
