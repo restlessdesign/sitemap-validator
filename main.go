@@ -56,7 +56,7 @@ func main() {
 func loadSitemapIndex(url string) {
 	resp, err := http.Get(url)
 
-	log.Printf("Loading sitemap index: %v (%v)\n", url, resp.Status)
+	log.Printf("(%v) %v \n", resp.Status, url)
 
 	if err != nil || resp.StatusCode > 200 {
 		log.Printf("Unable to load sitemap index: %v\n", url)
@@ -85,19 +85,31 @@ func parseSitemapIndex(resp *http.Response) {
 		log.Fatal(xmlErr)
 	}
 
+	ch := make(chan string)
+
 	for _, sitemap := range v.Sitemaps {
-		loadSitemap(sitemap.Loc)
+		go loadSitemap(sitemap.Loc, ch)
 	}
+
+	// Iterate over channel output
+	for range v.Sitemaps {
+		<-ch
+	}
+
+	log.Println("All sitemaps loaded")
 }
 
-func loadSitemap(url string) {
+func loadSitemap(url string, sitemapChan chan string) {
 	resp, err := http.Get(url)
 
-	log.Printf("Loading sitemap: %v (%v)\n", url, resp.Status)
+	log.Printf("(%v) %v \n", resp.Status, url)
 
 	if err != nil || resp.StatusCode > 200 {
 		log.Fatal(err)
 	}
+
+	// Notify channel of success
+	sitemapChan <- url
 
 	// parseSitemap(resp)
 }
