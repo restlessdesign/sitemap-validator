@@ -108,10 +108,34 @@ func loadSitemap(url string, sitemapChan chan string) {
 		log.Fatal(err)
 	}
 
+	parseSitemap(resp)
+
 	// Notify channel of success
 	sitemapChan <- url
+}
 
-	// parseSitemap(resp)
+func parseSitemap(resp *http.Response) {
+	// Ensure that read operation cleans up after itself
+	defer resp.Body.Close()
+
+	// Load response into a byte array
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Error reading sitemap")
+		log.Fatal(err)
+	}
+
+	// Parse XML from response byte array
+	v := &SitemapURLSet{}
+	xmlErr := xml.Unmarshal(respBytes, &v)
+	if xmlErr != nil {
+		log.Println("Error parsing XML response")
+		log.Fatal(xmlErr)
+	}
+
+	for _, url := range v.URLs {
+		log.Println(url.Loc)
+	}
 }
 
 // Build tree of URLs
