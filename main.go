@@ -45,6 +45,16 @@ type SitemapURL struct {
 	Priority   float64 `xml:"priority,omitempty"`
 }
 
+type SitemapValidationResponse struct {
+	Name    string
+	Results []URLValidationResponse
+}
+
+type URLValidationResponse struct {
+	URL        string
+	StatusCode int
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		log.Fatalln("You must pass a sitemap index URL argument!")
@@ -85,21 +95,22 @@ func parseSitemapIndex(resp *http.Response) {
 		log.Fatal(xmlErr)
 	}
 
-	ch := make(chan string)
-
+	ch := make(chan SitemapValidationResponse, len(v.Sitemaps))
 	for _, sitemap := range v.Sitemaps {
 		go loadSitemap(sitemap.Loc, ch)
 	}
 
 	// Iterate over channel output
-	for range v.Sitemaps {
-		<-ch
+	results := make([]SitemapValidationResponse, len(v.Sitemaps))
+	for i, _ := range v.Sitemaps {
+		results[i] = <-ch
 	}
 
 	log.Println("All sitemaps loaded")
+	log.Print(results)
 }
 
-func loadSitemap(url string, sitemapChan chan string) {
+func loadSitemap(url string, results chan SitemapValidationResponse) {
 	resp, err := http.Get(url)
 
 	log.Printf("(%v) %v \n", resp.Status, url)
@@ -108,10 +119,14 @@ func loadSitemap(url string, sitemapChan chan string) {
 		log.Fatal(err)
 	}
 
-	parseSitemap(resp)
+	// ch := make(chan []ValidationResponse)
+	// parseSitemap(resp)
 
 	// Notify channel of success
-	sitemapChan <- url
+	results <- SitemapValidationResponse{
+		Name: url,
+		Results: []URLValidationResponse
+	}
 }
 
 func parseSitemap(resp *http.Response) {
@@ -125,7 +140,7 @@ func parseSitemap(resp *http.Response) {
 		log.Fatal(err)
 	}
 
-	// Parse XML from response byte array
+	// Build tree of URLs by parsing XML from response byte array
 	v := &SitemapURLSet{}
 	xmlErr := xml.Unmarshal(respBytes, &v)
 	if xmlErr != nil {
@@ -134,10 +149,13 @@ func parseSitemap(resp *http.Response) {
 	}
 
 	for _, url := range v.URLs {
-		log.Println(url.Loc)
+		loadSitemapUrl(url.Loc)
 	}
 }
 
-// Build tree of URLs
-// Issue a HEAD request for each URL, IGNORING redirects
+// func loadSitemapUrl(url string) {
+// Issue a HEAD request for each URL, IGNORING redirects, spacing the requests out if at all possible
+// resp, err := http.Head(url)
+// }
+
 // For each link in the sitemap, save parent sitemap path, sitemap link path, and HTTP status (200, 301, 404, 500, etc.) to CSV
